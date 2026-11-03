@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="description" content="Yahtzee Dice — the classic five-dice scorecard game with 3D tumbling dice, upper-section bonus, joker rule and best-score saving. Free HTML5 game.">
+<title>Yahtzee Dice · Classic 5-Dice Scorecard</title>
+<script>
+// 平台 SDK 按域名条件加载（独立运行时完全不加载，游戏行为不变）
+(function () {
+  var host = location.hostname || "";
+  try {
+    if (host.indexOf("crazygames") !== -1) {
+      var s1 = document.createElement("script");
+      s1.src = "https://sdk.crazygames.com/crazygames-sdk-v3.js";
+      s1.onload = function () {
+        if (window.CrazyGames && window.CrazyGames.SDK) {
+          window.CrazyGames.SDK.init().then(function () {
+            try { window.CrazyGames.SDK.game.loadingStart(); } catch (e) {}
+            window.addEventListener("load", function () { try { window.CrazyGames.SDK.game.loadingStop(); } catch (e) {} });
+          }).catch(function () {});
+        }
+      };
+      document.head.appendChild(s1);
+      window.__portal = "crazygames";
+    } else if (host.indexOf("gamedistribution") !== -1 || host.indexOf("html5.gamedistribution.com") !== -1 || host.indexOf("gd.games") !== -1) {
+      var s2 = document.createElement("script");
+      s2.src = "https://sdk.gamedistribution.com/v2/main.min.js";
+      document.head.appendChild(s2);
+      window.__portal = "gamedistribution";
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: radial-gradient(130% 90% at 50% 0%, #17614a 0%, #0d4433 48%, #072a1f 100%) fixed;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #eef7f0;
+    display: flex; flex-direction: column; align-items: center;
+    user-select: none; -webkit-user-select: none;
+  }
+  #wrap { width: 100%; max-width: 480px; min-height: 100%; display: flex; flex-direction: column; padding: 8px 10px 12px; }
+  #hud { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 4px; gap: 6px; }
+  .stat { text-align: center; min-width: 58px; }
+  .stat .label { font-size: 10px; letter-spacing: 1.5px; color: #9fd0b9; }
+  .stat .val { font-size: 21px; font-weight: 800; color: #fff; }
+  #title { font-size: 15px; font-weight: 800; letter-spacing: 2px; color: #ffd76a; text-align: center; flex: 1; }
+  .tbtn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); color: #eef7f0; border-radius: 9px; padding: 6px 9px; font-size: 10px; font-weight: 700; cursor: pointer; touch-action: manipulation; letter-spacing: .5px; }
+  .tbtn:active { transform: scale(.96); }
+  #roundChip { text-align: center; font-size: 11px; letter-spacing: 2px; color: #cfe9da; padding: 3px 0 5px; font-weight: 700; }
+  #roundChip b { color: #ffd76a; }
+  #dice { display: block; border-radius: 14px; touch-action: none; width: 100%; max-width: 420px; margin: 0 auto; box-shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.07); }
+  #ctrlRow { display: flex; gap: 8px; align-items: stretch; padding: 10px 2px 4px; }
+  #rollBtn { flex: 1; background: linear-gradient(135deg, #f2b632, #e08a1e); color: #3a2404; border: none; border-radius: 12px; padding: 13px 10px; font-size: 15px; font-weight: 800; letter-spacing: 1px; cursor: pointer; touch-action: manipulation; box-shadow: 0 3px 0 #9c6210; }
+  #rollBtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #9c6210; }
+  #rollBtn:disabled { background: rgba(255,255,255,.1); color: #9dbcaa; box-shadow: none; cursor: default; transform: none; }
+  #muteBtn { display: flex; align-items: center; }
+  #hint { text-align: center; font-size: 11.5px; color: #bfe0cd; min-height: 17px; padding: 3px 0 7px; }
+  /* ---------- 计分卡（双列表） ---------- */
+  #card { display: flex; gap: 8px; align-items: flex-start; }
+  .colsec { flex: 1; background: rgba(4, 26, 19, .55); border: 1px solid rgba(255,255,255,.09); border-radius: 12px; padding: 7px 7px 8px; min-width: 0; }
+  .sechead { font-size: 10px; letter-spacing: 1.5px; color: #ffd76a; font-weight: 800; padding: 2px 3px 5px; }
+  .sechead span { color: #9fd0b9; font-weight: 600; letter-spacing: .5px; }
+  .cat { display: flex; justify-content: space-between; align-items: center; width: 100%; background: rgba(255,255,255,.05); border: 1px solid transparent; border-radius: 8px; padding: 5px 7px; margin: 3px 0; color: #dcefe3; font-size: 11.5px; cursor: default; touch-action: manipulation; font-family: inherit; }
+  .cat .cname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat .cval { font-weight: 800; color: #8fae9d; font-size: 12.5px; min-width: 26px; text-align: right; }
+  .cat.filled { background: rgba(0,0,0,.25); border-color: rgba(255,255,255,.06); }
+  .cat.filled .cval { color: #fff; }
+  .cat.active { cursor: pointer; border-color: rgba(255,215,106,.35); background: rgba(255,215,106,.07); }
+  .cat.active .cval { color: #ffe9ad; }
+  .cat.active:active { transform: scale(.98); }
+  .cat.suggest { border-color: #ffd76a; background: rgba(255,215,106,.16); box-shadow: 0 0 8px rgba(255,215,106,.25); }
+  .cat.suggest .cval { color: #ffd76a; }
+  .sumrow { display: flex; justify-content: space-between; font-size: 10.5px; color: #bfe0cd; padding: 4px 4px 2px; font-weight: 700; letter-spacing: .5px; }
+  .sumrow.bonus { color: #ffd76a; }
+  .sumrow.hot { animation: pulse .8s ease-in-out 3; }
+  @keyframes pulse { 50% { transform: scale(1.06); color: #fff; } }
+  #grand { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; background: rgba(255,215,106,.1); border: 1px solid rgba(255,215,106,.35); border-radius: 10px; padding: 9px 13px; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; color: #ffd76a; }
+  #grand span { font-size: 21px; color: #fff; }
+  #footer { color: rgba(255,255,255,.35); font-size: 11px; text-align: center; padding: 12px 0 4px; }
+  /* ---------- 覆盖层 ---------- */
+  #overlay, #rulesOv { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(3,14,10,.8); backdrop-filter: blur(3px); z-index: 20; padding: 16px; }
+  #panel, #rulesPanel { background: #0d3527; border: 1px solid rgba(255,215,106,.3); border-radius: 18px; padding: 22px 24px; text-align: center; color: #fff; max-height: 92vh; overflow-y: auto; width: 100%; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  #panel h2, #rulesPanel h2 { font-size: 21px; letter-spacing: 1px; color: #ffd76a; margin-bottom: 4px; }
+  #panel .sub { color: #9fd0b9; font-size: 12px; margin-bottom: 10px; }
+  #finalScore { font-size: 40px; font-weight: 900; color: #fff; margin: 2px 0 4px; }
+  #finalBreak { color: #cfe9da; font-size: 12px; margin-bottom: 12px; line-height: 1.6; }
+  #recap { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; text-align: left; font-size: 10.5px; color: #bfe0cd; background: rgba(0,0,0,.25); border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; }
+  #recap .rc { display: flex; justify-content: space-between; gap: 6px; }
+  #recap .rc b { color: #fff; }
+  #newBest { display: none; color: #ffd76a; font-weight: 900; font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; animation: pulse 0.7s ease-in-out infinite; }
+  #againBtn { background: linear-gradient(135deg, #f2b632, #e08a1e); color: #3a2404; border: none; border-radius: 12px; padding: 12px 34px; font-size: 15px; font-weight: 800; letter-spacing: 1px; cursor: pointer; touch-action: manipulation; }
+  #againBtn:active { transform: scale(.97); }
+  #rulesPanel { text-align: left; }
+  #rulesPanel ul { margin: 10px 0 16px 18px; color: #dcefe3; font-size: 12.5px; line-height: 1.65; }
+  #rulesPanel li { margin-bottom: 7px; }
+  #rulesPanel b { color: #ffd76a; }
+  #rulesClose { display: block; margin: 0 auto; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 10px; padding: 10px 26px; font-size: 13px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="stat"><div class="label">TOTAL</div><div class="val" id="total">0</div></div>
+    <div id="title">YAHTZEE DICE</div>
+    <button id="rulesBtn" class="tbtn">RULES</button>
+    <div class="stat"><div class="label">BEST</div><div class="val" id="best">0</div></div>
+  </div>
+  <div id="roundChip">ROUND <b>1</b> / 13</div>
+  <canvas id="dice"></canvas>
+  <div id="ctrlRow">
+    <button id="rollBtn">ROLL · 3 ROLLS LEFT</button>
+    <button id="muteBtn" class="tbtn">SOUND ON</button>
+  </div>
+  <div id="hint">Tap ROLL to start round 1</div>
+  <div id="card">
+    <div class="colsec">
+      <div class="sechead">UPPER SECTION <span>· 63+ = +35</span></div>
+      <div id="upRows"></div>
+      <div class="sumrow" id="upSub">UPPER 0 / 63</div>
+      <div class="sumrow bonus" id="upBonus">BONUS +35 AT 63</div>
+    </div>
+    <div class="colsec">
+      <div class="sechead">LOWER SECTION</div>
+      <div id="loRows"></div>
+      <div class="sumrow" id="loSub">LOWER 0</div>
+      <div class="sumrow bonus" id="jokerLine">JOKER BONUS +0</div>
+    </div>
+  </div>
+  <div id="grand">GRAND TOTAL <span id="grandVal">0</span></div>
+  <div id="footer">Yahtzee Dice — a free classic dice game</div>
+</div>
+<div id="overlay"><div id="panel">
+  <h2>GAME OVER</h2>
+  <div class="sub">All 13 rounds scored</div>
+  <div id="finalScore">0</div>
+  <div id="finalBreak"></div>
+  <div id="recap"></div>
+  <div id="newBest">★ NEW BEST! ★</div>
+  <button id="againBtn">PLAY AGAIN</button>
+</div></div>
+<div id="rulesOv"><div id="rulesPanel">
+  <h2>How to Play</h2>
+  <ul>
+    <li>5 dice, 13 rounds. Each turn you may roll up to <b>3 times</b> — after a roll, tap dice to <b>hold</b> them, then re-roll the rest.</li>
+    <li>Every turn must end by writing the hand into <b>one empty scorecard row</b>. Rows cannot be reused.</li>
+    <li><b>Upper rows</b> score the sum of matching dice. Total 63+ across the top for a <b>+35 bonus</b>.</li>
+    <li><b>3 / 4 of a Kind</b> and <b>Chance</b> score all five dice. <b>Full House</b> 25. <b>Small Straight</b> (four in a row) 30, <b>Large Straight</b> (five in a row) 40.</li>
+    <li><b>Yahtzee</b> (five of a kind) scores 50. A later Yahtzee in the same game gives a <b>+100 Joker bonus</b>, and you may write <b>50 into any empty row</b> (simplified Joker rule).</li>
+    <li>Gold-highlighted rows are the best 3 options for your current hand.</li>
+    <li>Your best score is saved on this device.</li>
+  </ul>
+  <button id="rulesClose">GOT IT</button>
+</div></div>
+<script>
+"use strict";
+/*SIM-START*/
+// ================= 纯逻辑模块（无 DOM 依赖，可无头单测） =================
+var CATS = ["ones","twos","threes","fours","fives","sixes","kind3","kind4","full","small","large","ytz","chance"];
+var UPPER_CATS = CATS.slice(0, 6);
+var LOWER_CATS = CATS.slice(6);
+var CAT_LABEL = { ones:"Ones", twos:"Twos", threes:"Threes", fours:"Fours", fives:"Fives", sixes:"Sixes", kind3:"3 of a Kind", kind4:"4 of a Kind", full:"Full House", small:"Sm Straight", large:"Lg Straight", ytz:"YAHTZEE", chance:"Chance" };
+var UPPER_BONUS_AT = 63, UPPER_BONUS_VAL = 35;
+var FULL_HOUSE_VAL = 25, SMALL_STRAIGHT_VAL = 30, LARGE_STRAIGHT_VAL = 40, YAHTZEE_VAL = 50, JOKER_BONUS_VAL = 100;
+
+function counts(dice) {
+  var c = [0,0,0,0,0,0,0];
+  for (var i = 0; i < dice.length; i++) { var d = dice[i]; if (d >= 1 && d <= 6) c[d]++; }
+  return c;
+}
+function diceTotal(dice) { var s = 0; for (var i = 0; i < dice.length; i++) s += dice[i]; return s; }
+function maxRun(dice) {
+  var c = counts(dice), run = 0, best = 0;
+  for (var v = 1; v <= 6; v++) { if (c[v] > 0) { run++; if (run > best) best = run; } else run = 0; }
+  return best;
+}
+function isYahtzee(dice) { var c = counts(dice); for (var v = 1; v <= 6; v++) if (c[v] === 5) return true; return false; }
+
+// 单类目计分：只看骰面，与计分卡状态无关
+function catScore(cat, dice) {
+  var c = counts(dice), t = diceTotal(dice), i, has, cs = [];
+  switch (cat) {
+    case "ones":   return c[1];
+    case "twos":   return c[2] * 2;
+    case "threes": return c[3] * 3;
+    case "fours":  return c[4] * 4;
+    case "fives":  return c[5] * 5;
+    case "sixes":  return c[6] * 6;
+    case "kind3":
+      has = false; for (i = 1; i <= 6; i++) if (c[i] >= 3) has = true;
+      return has ? t : 0;
+    case "kind4":
+      has = false; for (i = 1; i <= 6; i++) if (c[i] >= 4) has = true;
+      return has ? t : 0;
+    case "full":
+      // 3+2；简化规则：五同也计 Full House
+      for (i = 1; i <= 6; i++) if (c[i] > 0) cs.push(c[i]);
+      cs.sort(function (a, b) { return b - a; });
+      if (cs[0] === 5) return FULL_HOUSE_VAL;
+      if (cs[0] >= 3 && cs[1] >= 2) return FULL_HOUSE_VAL;
+      return 0;
+    case "small": return maxRun(dice) >= 4 ? SMALL_STRAIGHT_VAL : 0;
+    case "large": return maxRun(dice) >= 5 ? LARGE_STRAIGHT_VAL : 0;
+    case "ytz":   return isYahtzee(dice) ? YAHTZEE_VAL : 0;
+    case "chance": return t;
+  }
+  return 0;
+}
+// Joker 简化规则：Yahtzee 行已记分后再掷出五同 → 本回合任意空行可记 50
+function jokerHand(dice, scores) { return isYahtzee(dice) && scores.ytz !== undefined; }
+function effScore(cat, dice, scores) { return jokerHand(dice, scores) ? YAHTZEE_VAL : catScore(cat, dice); }
+
+function upperSum(scores) { var s = 0; for (var i = 0; i < 6; i++) s += scores[UPPER_CATS[i]] || 0; return s; }
+function lowerSum(scores) { var s = 0; for (var i = 6; i < 13; i++) s += scores[CATS[i]] || 0; return s; }
+function upperBonusOf(sum) { return sum >= UPPER_BONUS_AT ? UPPER_BONUS_VAL : 0; }
+function upperBonus(scores) { return upperBonusOf(upperSum(scores)); }
+function grandTotal(scores, ytzBonus) { return upperSum(scores) + upperBonus(scores) + lowerSum(scores) + (ytzBonus || 0); }
+
+// ---------- 回合状态机 ----------
+function newState() {
+  return { scores: {}, ytzBonus: 0, round: 0, rollsUsed: 0, rollsLeft: 3,
+           dice: [1,2,3,4,5], held: [false,false,false,false,false],
+           canScore: false, over: false, final: 0 };
+}
+function startTurn(st) {
+  st.rollsUsed = 0; st.rollsLeft = 3;
+  st.held = [false, false, false, false, false];
+  st.canScore = false;
+  return st;
+}
+// 掷骰：只重掷未锁定骰；rnd 可注入（测试）；全锁不允许空掷
+function rollDice(st, rnd) {
+  if (st.over || st.rollsLeft <= 0) return false;
+  var r = rnd || Math.random, any = false;
+  for (var i = 0; i < 5; i++) if (!st.held[i]) { st.dice[i] = 1 + Math.floor(r() * 6); any = true; }
+  if (!any) return false;
+  st.rollsUsed++; st.rollsLeft--; st.canScore = true;
+  return true;
+}
+// 记分：一回合必须写进一个空行（重复行拒绝）；Joker 额外 +100
+function recordScore(st, cat) {
+  if (st.over) return { ok: false, reason: "over" };
+  if (!st.canScore) return { ok: false, reason: "no-roll" };
+  if (CATS.indexOf(cat) < 0) return { ok: false, reason: "bad-cat" };
+  if (st.scores[cat] !== undefined) return { ok: false, reason: "filled" };
+  var joker = jokerHand(st.dice, st.scores);
+  var v = joker ? YAHTZEE_VAL : catScore(cat, st.dice);
+  if (joker) st.ytzBonus += JOKER_BONUS_VAL;
+  st.scores[cat] = v;
+  st.round++;
+  if (st.round >= 13) { st.over = true; st.final = grandTotal(st.scores, st.ytzBonus); }
+  else startTurn(st);
+  return { ok: true, value: v, joker: joker };
+}
+// 计分建议器：本骰面按当前面值取最优 3 项（期望值简化）
+function suggestions(st) {
+  var opts = [];
+  for (var i = 0; i < CATS.length; i++) {
+    var c = CATS[i];
+    if (st.scores[c] !== undefined) continue;
+    opts.push({ cat: c, v: effScore(c, st.dice, st.scores) });
+  }
+  opts.sort(function (a, b) { return b.v - a.v; });
+  return opts.slice(0, 3);
+}
+/*SIM-END*/
+// ================= 展示与交互 =================
+var CW = 420, CH = 124, DIE = 50, DIELIFT = 7;
+var SLOTX = [42, 126, 210, 294, 378], SLOTY = 60;
+var canvas = document.getElementById("dice");
+var ctx = canvas.getContext("2d");
+var dpr = Math.min(window.devicePixelRatio || 1, 2);
+canvas.width = CW * dpr; canvas.height = CH * dpr;
+canvas.style.width = "100%"; canvas.style.maxWidth = CW + "px";
+ctx.scale(dpr, dpr);
+
+var st = newState();
+var best = 0;
+try { best = parseInt(localStorage.getItem("yd_best") || "0", 10) || 0; } catch (e) {}
+var muted = false;
+try { muted = localStorage.getItem("yd_muted") === "1"; } catch (e) {}
+var rolling = false, gameplayStarted = false;
+
+// ---------- 平台埋点（SDK 已做域名守卫，此处再判一次 portal 标记） ----------
+function portalStart() {
+  try {
+    if (window.__portal === "crazygames" && window.CrazyGames && window.CrazyGames.SDK) {
+      window.CrazyGames.SDK.game.gameplayStart();
+    }
+  } catch (e) {}
+}
+function portalStop() {
+  try {
+    if (window.__portal === "crazygames" && window.CrazyGames && window.CrazyGames.SDK) {
+      window.CrazyGames.SDK.game.gameplayStop();
+      window.CrazyGames.SDK.game.happytime();
+    }
+  } catch (e) {}
+}
+
+// ---------- 音效（WebAudio 合成：振荡器 + 噪声碰撞） ----------
+var AC = null, noiseBuf = null;
+function ensureAudio() {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    if (!noiseBuf) {
+      noiseBuf = AC.createBuffer(1, (AC.sampleRate * 0.25) | 0, AC.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+  } catch (e) {}
+}
+function beep(freq, dur, type, gainv, when) {
+  try {
+    if (muted || !AC) return;
+    var t = AC.currentTime + (when || 0);
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(gainv || 0.1, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+// 单次骰子碰撞嗒嗒声（带通滤波噪声短脉冲）
+function clack(when, vol) {
+  try {
+    if (muted || !AC || !noiseBuf) return;
+    var t = AC.currentTime + when;
+    var src = AC.createBufferSource(); src.buffer = noiseBuf;
+    src.playbackRate.value = 0.7 + Math.random() * 0.7;
+    var f = AC.createBiquadFilter(); f.type = "bandpass";
+    f.frequency.value = 1500 + Math.random() * 2500; f.Q.value = 1.4;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    src.connect(f); f.connect(g); g.connect(AC.destination);
+    src.start(t); src.stop(t + 0.09);
+  } catch (e) {}
+}
+function clatter() {
+  for (var i = 0; i < 9; i++) clack(0.03 + i * 0.075 + Math.random() * 0.05, 0.05 + Math.random() * 0.07);
+  clack(0.82, 0.1);
+}
+function chime(v) { beep(523, 0.09, "triangle", 0.1); beep(784, 0.14, "triangle", 0.1, 0.09); if (v >= 30) beep(1046, 0.18, "triangle", 0.09, 0.18); }
+function fanfare() { var n = [523, 659, 784, 1046]; for (var i = 0; i < n.length; i++) beep(n[i], 0.16, "square", 0.07, i * 0.11); }
+function overSound() { beep(392, 0.18, "sine", 0.09); beep(330, 0.18, "sine", 0.09, 0.18); beep(262, 0.32, "sine", 0.09, 0.36); }
+function bestFanfare() { var n = [523, 659, 784, 1046, 1318]; for (var i = 0; i < n.length; i++) beep(n[i], 0.15, "triangle", 0.1, i * 0.09); }
+
+// ---------- 3D 骰子渲染（canvas 程序化：旋转矩阵 + 透视投影 + 背面剔除） ----------
+function mat3RYRX(rx, ry) {   // Ry(ry)·Rx(rx)，行主序
+  var cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
+  return [cy, sy * sx, sy * cx, 0, cx, -sx, -sy, cy * sx, cy * cx];
+}
+function mat3Mul(A, B) {
+  var C = new Array(9);
+  for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) {
+    C[r * 3 + c] = A[r * 3] * B[c] + A[r * 3 + 1] * B[3 + c] + A[r * 3 + 2] * B[6 + c];
+  }
+  return C;
+}
+function mat3Vec(M, v) {
+  return [M[0] * v[0] + M[1] * v[1] + M[2] * v[2],
+          M[3] * v[0] + M[4] * v[1] + M[5] * v[2],
+          M[6] * v[0] + M[7] * v[1] + M[8] * v[2]];
+}
+var TILT = mat3Mul(mat3RYRX(0.36, 0), mat3RYRX(0, -0.46)); // 静置微倾：露出三个面更立体
+var LIGHT = (function () {
+  var l = [-0.35, 0.6, 0.72], m = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
+  return [l[0] / m, l[1] / m, l[2] / m];
+})();
+// 六个面：法线 + 面内 uv 基 + 点数
+var FACES = [
+  { n: [0, 0, 1],  u: [1, 0, 0],  v: [0, 1, 0],  val: 1 },
+  { n: [1, 0, 0],  u: [0, 0, -1], v: [0, 1, 0],  val: 3 },
+  { n: [-1, 0, 0], u: [0, 0, 1],  v: [0, 1, 0],  val: 4 },
+  { n: [0, 1, 0],  u: [1, 0, 0],  v: [0, 0, -1], val: 2 },
+  { n: [0, -1, 0], u: [1, 0, 0],  v: [0, 0, 1],  val: 5 },
+  { n: [0, 0, -1], u: [-1, 0, 0], v: [0, 1, 0],  val: 6 }
+];
+var PIPS = {
+  1: [[0, 0]],
+  2: [[-1, -1], [1, 1]],
+  3: [[-1, -1], [0, 0], [1, 1]],
+  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
+  5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
+  6: [[-1, -1], [-1, 0], [-1, 1], [1, -1], [1, 0], [1, 1]]
+};
+var PIP_U = 0.52, DIST = 5.0;
+function proj(p, cx, cy, R) {
+  var f = DIST / (DIST - p[2]);
+  return [cx + p[0] * R * f, cy - p[1] * R * f, f];
+}
+function drawDie(cx, cy, size, M, alpha) {
+  var R = size / 2, faces = [];
+  for (var f = 0; f < 6; f++) {
+    var F0 = FACES[f], n = mat3Vec(M, F0.n);
+    if (n[2] <= 0.05) continue; // 背面剔除
+    var SU = [-1, 1, 1, -1], SV = [-1, -1, 1, 1], corners = [], zsum = 0, k, p;
+    for (k = 0; k < 4; k++) {
+      p = [F0.n[0] + F0.u[0] * SU[k] + F0.v[0] * SV[k],
+           F0.n[1] + F0.u[1] * SU[k] + F0.v[1] * SV[k],
+           F0.n[2] + F0.u[2] * SU[k] + F0.v[2] * SV[k]];
+      p = mat3Vec(M, p);
+      zsum += p[2];
+      var pr = proj(p, cx, cy, R);
+      corners.push([pr[0], pr[1]]);
+    }
+    faces.push({ z: zsum / 4, n: n, corners: corners, val: F0.val, u: F0.u, v: F0.v, n0: F0.n });
+  }
+  faces.sort(function (a, b) { return a.z - b.z; }); // 画家算法：远→近
+  for (var fi = 0; fi < faces.length; fi++) {
+    var fc = faces[fi];
+    var b = 0.6 + 0.4 * Math.max(0, fc.n[0] * LIGHT[0] + fc.n[1] * LIGHT[1] + fc.n[2] * LIGHT[2]);
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.moveTo(fc.corners[0][0], fc.corners[0][1]);
+    ctx.lineTo(fc.corners[1][0], fc.corners[1][1]);
+    ctx.lineTo(fc.corners[2][0], fc.corners[2][1]);
+    ctx.lineTo(fc.corners[3][0], fc.corners[3][1]);
+    ctx.closePath();
+    ctx.fillStyle = "rgb(" + Math.round(250 * b) + "," + Math.round(249 * b) + "," + Math.round(242 * b) + ")";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(35,55,45,0.4)"; ctx.lineWidth = 1; ctx.stroke();
+    // 红点
+    var pts = PIPS[fc.val];
+    for (var pi = 0; pi < pts.length; pi++) {
+      var s0 = pts[pi][0] * PIP_U, s1 = pts[pi][1] * PIP_U;
+      var pp = mat3Vec(M, [fc.n0[0] + fc.u[0] * s0 + fc.v[0] * s1,
+                           fc.n0[1] + fc.u[1] * s0 + fc.v[1] * s1,
+                           fc.n0[2] + fc.u[2] * s0 + fc.v[2] * s1]);
+      var pr2 = proj(pp, cx, cy, R);
+      ctx.beginPath();
+      ctx.arc(pr2[0], pr2[1], size * 0.088 * (fc.val === 1 ? 1.5 : 1) * pr2[2], 0, Math.PI * 2);
+      ctx.fillStyle = "rgb(196, 38, 45)";
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+// 面值 → 静置朝向角
+function restAngles(v) {
+  var rx = 0, ry = 0;
+  if (v === 2) rx = Math.PI / 2; else if (v === 5) rx = -Math.PI / 2;
+  if (v === 3) ry = -Math.PI / 2; else if (v === 4) ry = Math.PI / 2; else if (v === 6) ry = Math.PI;
+  return { rx: rx, ry: ry };
+}
+var vis = [];
+function initVis(vals) {
+  vis = [];
+  for (var i = 0; i < 5; i++) {
+    var a = restAngles(vals[i]);
+    vis.push({ rx: a.rx, ry: a.ry, anim: null });
+  }
+}
+initVis(st.dice);
+
+// ---------- 绒面纹理（程序化，一次性生成） ----------
+var felt = null;
+(function makeFelt() {
+  try {
+    var c = document.createElement("canvas"); c.width = 96; c.height = 96;
+    var g = c.getContext("2d");
+    g.fillStyle = "#0e4a37"; g.fillRect(0, 0, 96, 96);
+    for (var i = 0; i < 420; i++) {
+      g.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.055)";
+      g.fillRect((Math.random() * 96) | 0, (Math.random() * 96) | 0, 1.5, 1.5);
+    }
+    felt = ctx.createPattern(c, "repeat");
+  } catch (e) { felt = null; }
+})();
+function roundRectPath(c, x, y, w, h, rad) {
+  c.beginPath();
+  c.moveTo(x + rad, y);
+  c.arcTo(x + w, y, x + w, y + h, rad);
+  c.arcTo(x + w, y + h, x, y + h, rad);
+  c.arcTo(x, y + h, x, y, rad);
+  c.arcTo(x, y, x + w, y, rad);
+  c.closePath();
+}
+function drawLock(cx, topY) {
+  ctx.fillStyle = "#ffd76a";
+  ctx.strokeStyle = "#ffd76a"; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.arc(cx, topY, 4.2, Math.PI, 0); ctx.stroke();
+  roundRectPath(ctx, cx - 8, topY, 16, 11, 3); ctx.fill();
+  ctx.fillStyle = "#7a5a12";
+  ctx.beginPath(); ctx.arc(cx, topY + 5, 1.8, 0, Math.PI * 2); ctx.fill();
+}
+function drawBoard(now) {
+  ctx.clearRect(0, 0, CW, CH);
+  ctx.fillStyle = felt || "#0e4a37";
+  ctx.fillRect(0, 0, CW, CH);
+  var vg = ctx.createRadialGradient(CW / 2, CH / 2 - 10, 24, CW / 2, CH / 2, CW * 0.72);
+  vg.addColorStop(0, "rgba(255,255,255,0.05)"); vg.addColorStop(1, "rgba(0,0,0,0.28)");
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, CW, CH);
+  var animActive = false, i, v, t;
+  for (i = 0; i < 5; i++) {
+    v = vis[i];
+    if (v.anim) {
+      t = (now - v.anim.t0) / v.anim.dur;
+      if (t < 0) animActive = true;
+      else if (t >= 1) { v.rx = v.anim.finalRx; v.ry = v.anim.finalRy; v.anim = null; }
+      else {
+        animActive = true;
+        var p = 1 - Math.pow(1 - t, 3); // easeOutCubic
+        v.rx = v.anim.rx0 + (v.anim.rx1 - v.anim.rx0) * p;
+        v.ry = v.anim.ry0 + (v.anim.ry1 - v.anim.ry0) * p;
+        v.hop = Math.sin(t * Math.PI) * v.anim.hopAmp;
+      }
+    }
+    if (!v.anim) v.hop = 0;
+    var hop = v.hop || 0;
+    var cx = SLOTX[i], cy = SLOTY - (st.held[i] ? DIELIFT : 0) - hop;
+    var dim = !st.canScore && !rolling;
+    // 底影
+    ctx.beginPath();
+    ctx.ellipse(cx, SLOTY + DIE * 0.62, DIE * 0.42 * (1 - hop / 40), DIE * 0.14 * (1 - hop / 40), 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fill();
+    var M = mat3Mul(TILT, mat3RYRX(v.rx, v.ry));
+    drawDie(cx, cy, DIE, M, dim ? 0.45 : 1);
+    // 可点选提示虚线框
+    if (!rolling && st.canScore && st.rollsLeft > 0) {
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = st.held[i] ? "rgba(255,215,106,0.9)" : "rgba(255,255,255,0.28)";
+      ctx.lineWidth = 1.6;
+      roundRectPath(ctx, cx - DIE * 0.62, cy - DIE * 0.62, DIE * 1.24, DIE * 1.24, 9);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (st.held[i]) drawLock(cx, cy - DIE * 0.62 - 12);
+  }
+  if (rolling && !animActive) { rolling = false; onRollAnimEnd(); }
+}
+
+// ---------- UI ----------
+var el = function (id) { return document.getElementById(id); };
+var totalEl = el("total"), bestEl = el("best"), roundChipEl = el("roundChip"),
+    rollBtn = el("rollBtn"), muteBtn = el("muteBtn"), hintEl = el("hint"),
+    upRowsEl = el("upRows"), loRowsEl = el("loRows"), upSubEl = el("upSub"),
+    upBonusEl = el("upBonus"), loSubEl = el("loSub"), jokerLineEl = el("jokerLine"),
+    grandValEl = el("grandVal"), overlayEl = el("overlay"), finalScoreEl = el("finalScore"),
+    finalBreakEl = el("finalBreak"), recapEl = el("recap"), newBestEl = el("newBest"),
+    rulesOvEl = el("rulesOv");
+
+function buildCard() {
+  var i;
+  for (i = 0; i < UPPER_CATS.length; i++) upRowsEl.appendChild(makeRow(UPPER_CATS[i]));
+  for (i = 0; i < LOWER_CATS.length; i++) loRowsEl.appendChild(makeRow(LOWER_CATS[i]));
+}
+function makeRow(cat) {
+  var b = document.createElement("button");
+  b.className = "cat";
+  b.setAttribute("data-cat", cat);
+  b.innerHTML = '<span class="cname">' + CAT_LABEL[cat] + '</span><span class="cval">·</span>';
+  b.addEventListener("click", function () { onCatTap(cat); });
+  return b;
+}
+buildCard();
+
+function showHint(msg) { hintEl.textContent = msg; }
+
+function updateHud() {
+  var gt = grandTotal(st.scores, st.ytzBonus);
+  totalEl.textContent = gt;
+  grandValEl.textContent = gt;
+  bestEl.textContent = best;
+  roundChipEl.innerHTML = "ROUND <b>" + Math.min(st.round + 1, 13) + "</b> / 13";
+  if (rolling) { rollBtn.disabled = true; rollBtn.textContent = "ROLLING…"; }
+  else if (st.over) { rollBtn.disabled = true; rollBtn.textContent = "GAME OVER"; }
+  else if (st.rollsLeft <= 0) { rollBtn.disabled = true; rollBtn.textContent = "PICK A SCORE"; }
+  else { rollBtn.disabled = false; rollBtn.textContent = "ROLL · " + st.rollsLeft + (st.rollsLeft === 1 ? " ROLL" : " ROLLS") + " LEFT"; }
+  // 建议高亮
+  var sugg = {};
+  if (!rolling && st.canScore && !st.over) {
+    var s = suggestions(st);
+    for (var i = 0; i < s.length; i++) sugg[s[i].cat] = true;
+  }
+  var rows = document.querySelectorAll(".cat");
+  for (var r = 0; r < rows.length; r++) {
+    var rowEl = rows[r], cat = rowEl.getAttribute("data-cat");
+    var valSpan = rowEl.querySelector(".cval");
+    var filled = st.scores[cat] !== undefined;
+    var active = !rolling && st.canScore && !st.over && !filled;
+    rowEl.classList.toggle("filled", filled);
+    rowEl.classList.toggle("active", active);
+    rowEl.classList.toggle("suggest", !!sugg[cat]);
+    if (filled) valSpan.textContent = st.scores[cat];
+    else if (active) valSpan.textContent = effScore(cat, st.dice, st.scores);
+    else valSpan.textContent = "·";
+  }
+  var us = upperSum(st.scores), ub = upperBonus(st.scores);
+  upSubEl.textContent = "UPPER " + us + " / 63";
+  upBonusEl.textContent = ub > 0 ? "BONUS +35 UNLOCKED" : "BONUS +35 AT 63 (NOW " + us + ")";
+  loSubEl.textContent = "LOWER " + lowerSum(st.scores);
+  jokerLineEl.textContent = "JOKER BONUS +" + st.ytzBonus;
+}
+
+// ---------- 回合流程 ----------
+function doRoll() {
+  if (rolling || st.over || st.rollsLeft <= 0) return;
+  ensureAudio();
+  if (!gameplayStarted) { portalStart(); gameplayStarted = true; } // 首次交互 → gameplayStart
+  if (!rollDice(st)) { beep(170, 0.09, "square", 0.05); showHint("All dice are held — unlock at least one"); return; }
+  var now = performance.now();
+  for (var i = 0; i < 5; i++) {
+    if (st.held[i]) continue; // 锁定骰不重掷
+    var a = restAngles(st.dice[i]);
+    var spins = 2 + ((Math.random() * 2) | 0);
+    var dir = Math.random() < 0.5 ? 1 : -1;
+    vis[i].anim = {
+      t0: now + i * 40 + Math.random() * 60, dur: 800, // 0.8 秒翻滚
+      rx0: vis[i].rx, ry0: vis[i].ry,
+      rx1: a.rx + dir * spins * 2 * Math.PI,
+      ry1: a.ry + dir * (spins - 1) * 2 * Math.PI,
+      finalRx: a.rx, finalRy: a.ry,
+      hopAmp: 7 + Math.random() * 8
+    };
+  }
+  rolling = true;
+  clatter();
+  updateHud();
+  showHint("Tumbling…");
+}
+function onRollAnimEnd() {
+  updateHud();
+  if (st.rollsLeft > 0) showHint(st.rollsUsed === 1 ? "Tap dice to hold · roll again or pick a score" : "Last roll? Or pick a score now");
+  else showHint("No rolls left — pick a score row");
+}
+function onCatTap(cat) {
+  if (rolling || st.over || !st.canScore) return;
+  var r = recordScore(st, cat);
+  if (!r.ok) { beep(160, 0.09, "square", 0.06); showHint("That row is already used"); return; }
+  ensureAudio();
+  if (r.joker) { fanfare(); showHint("JOKER! +100 bonus banked, 50 written in " + CAT_LABEL[cat]); jokerLineEl.classList.remove("hot"); void jokerLineEl.offsetWidth; jokerLineEl.classList.add("hot"); }
+  else if (cat === "ytz" && r.value === 50) { fanfare(); showHint("YAHTZEE! 50 points"); }
+  else { chime(r.value); showHint(CAT_LABEL[cat] + ": " + r.value + (r.value === 0 ? " (scratched)" : "")); }
+  updateHud();
+  if (st.over) endGame();
+}
+function endGame() {
+  var isNewBest = false;
+  if (st.final > best) {
+    best = st.final; isNewBest = true;
+    try { localStorage.setItem("yd_best", String(best)); } catch (e) {}
+  }
+  bestEl.textContent = best;
+  finalScoreEl.textContent = st.final;
+  var ub = upperBonus(st.scores);
+  finalBreakEl.innerHTML =
+    "Upper " + upperSum(st.scores) + (ub ? " · Bonus +35" : "") +
+    " · Lower " + lowerSum(st.scores) +
+    (st.ytzBonus ? " · Joker Bonus +" + st.ytzBonus : "");
+  var html = "";
+  for (var i = 0; i < CATS.length; i++) {
+    var c = CATS[i];
+    html += '<div class="rc"><span>' + CAT_LABEL[c] + '</span><b>' + (st.scores[c] !== undefined ? st.scores[c] : 0) + '</b></div>';
+  }
+  recapEl.innerHTML = html;
+  newBestEl.style.display = isNewBest ? "block" : "none";
+  overlayEl.style.display = "flex";
+  ensureAudio();
+  if (isNewBest) bestFanfare(); else overSound();
+  portalStop(); // 一局结束（各 SDK 已做域名守卫）
+}
+function newGame() {
+  st = newState();
+  startTurn(st);
+  initVis(st.dice);
+  rolling = false; gameplayStarted = false;
+  overlayEl.style.display = "none";
+  showHint("Tap ROLL to start round 1");
+  updateHud();
+}
+
+// ---------- 输入：触控 + 鼠标 + 键盘 ----------
+function dieFromPoint(clientX, clientY) {
+  var rect = canvas.getBoundingClientRect();
+  var x = (clientX - rect.left) / rect.width * CW;
+  var y = (clientY - rect.top) / rect.height * CH;
+  var bi = -1, bd = 1e9;
+  for (var i = 0; i < 5; i++) {
+    var dx = x - SLOTX[i], dy = y - SLOTY, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return bd < 1600 ? bi : -1; // 40px 命中半径
+}
+function toggleHold(i) {
+  if (rolling || st.over || !st.canScore || st.rollsLeft <= 0) return;
+  st.held[i] = !st.held[i];
+  ensureAudio();
+  beep(st.held[i] ? 660 : 440, 0.05, "square", 0.06);
+  updateHud();
+}
+canvas.addEventListener("touchstart", function (e) {
+  e.preventDefault();
+  var t = e.touches[0];
+  var i = dieFromPoint(t.clientX, t.clientY);
+  if (i >= 0) toggleHold(i);
+}, { passive: false });
+canvas.addEventListener("mousedown", function (e) {
+  var i = dieFromPoint(e.clientX, e.clientY);
+  if (i >= 0) toggleHold(i);
+});
+rollBtn.addEventListener("click", doRoll);
+document.getElementById("againBtn").addEventListener("click", function (e) { e.stopPropagation(); newGame(); });
+document.getElementById("rulesBtn").addEventListener("click", function () { rulesOvEl.style.display = "flex"; });
+document.getElementById("rulesClose").addEventListener("click", function () { rulesOvEl.style.display = "none"; });
+function muteLabel() { muteBtn.textContent = muted ? "SOUND OFF" : "SOUND ON"; }
+muteBtn.addEventListener("click", function () {
+  muted = !muted;
+  try { localStorage.setItem("yd_muted", muted ? "1" : "0"); } catch (e) {}
+  muteLabel();
+  if (!muted) { ensureAudio(); beep(660, 0.06, "sine", 0.07); }
+});
+muteLabel();
+document.addEventListener("keydown", function (e) {
+  if (st.over && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); newGame(); return; }
+  if (e.key === "r" || e.key === "R" || e.key === " ") { e.preventDefault(); doRoll(); return; }
+  var n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 5) toggleHold(n - 1);
+});
+
+newGame();
+// 调试/测试钩子（不影响游戏逻辑）
+window.__yd = {
+  get state() { return st; },
+  catScore: catScore, effScore: effScore, suggestions: suggestions,
+  roll: doRoll, record: function (c) { return recordScore(st, c); }
+};
+var last = 0;
+function frame(t) {
+  var dt = t - last; last = t;
+  drawBoard(t);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
