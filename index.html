@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="description" content="Yahtzee Dice — the classic five-dice scorecard game with 3D tumbling dice, upper-section bonus, joker rule and best-score saving. Free HTML5 game.">
-<title>Yahtzee Dice · Classic 5-Dice Scorecard</title>
+<meta name="description" content="DICE POKER — the classic five-dice scorecard game with 3D tumbling dice, upper-section bonus, joker rule and best-score saving. Free HTML5 game.">
+<title>DICE POKER · Classic 5-Dice Scorecard</title>
 <script>
 // 平台 SDK 按域名条件加载（独立运行时完全不加载，游戏行为不变）
 (function () {
@@ -132,7 +132,7 @@
     </div>
   </div>
   <div id="grand">GRAND TOTAL <span id="grandVal">0</span></div>
-  <div id="footer">Yahtzee Dice — a free classic dice game</div>
+  <div id="footer">DICE POKER — a free classic dice game</div>
 </div>
 <div id="overlay"><div id="panel">
   <h2>GAME OVER</h2>
@@ -150,7 +150,7 @@
     <li>Every turn must end by writing the hand into <b>one empty scorecard row</b>. Rows cannot be reused.</li>
     <li><b>Upper rows</b> score the sum of matching dice. Total 63+ across the top for a <b>+35 bonus</b>.</li>
     <li><b>3 / 4 of a Kind</b> and <b>Chance</b> score all five dice. <b>Full House</b> 25. <b>Small Straight</b> (four in a row) 30, <b>Large Straight</b> (five in a row) 40.</li>
-    <li><b>Yahtzee</b> (five of a kind) scores 50. A later Yahtzee in the same game gives a <b>+100 Joker bonus</b>, and you may write <b>50 into any empty row</b> (simplified Joker rule).</li>
+    <li><b>Dice Poker</b> (five of a kind) scores 50. A later Dice Poker in the same game gives a <b>+100 Joker bonus</b>, and you may write <b>50 into any empty row</b> (simplified Joker rule).</li>
     <li>Gold-highlighted rows are the best 3 options for your current hand.</li>
     <li>Your best score is saved on this device.</li>
   </ul>
@@ -178,7 +178,7 @@ function maxRun(dice) {
   for (var v = 1; v <= 6; v++) { if (c[v] > 0) { run++; if (run > best) best = run; } else run = 0; }
   return best;
 }
-function isYahtzee(dice) { var c = counts(dice); for (var v = 1; v <= 6; v++) if (c[v] === 5) return true; return false; }
+function isDice Poker(dice) { var c = counts(dice); for (var v = 1; v <= 6; v++) if (c[v] === 5) return true; return false; }
 
 // 单类目计分：只看骰面，与计分卡状态无关
 function catScore(cat, dice) {
@@ -205,13 +205,13 @@ function catScore(cat, dice) {
       return 0;
     case "small": return maxRun(dice) >= 4 ? SMALL_STRAIGHT_VAL : 0;
     case "large": return maxRun(dice) >= 5 ? LARGE_STRAIGHT_VAL : 0;
-    case "ytz":   return isYahtzee(dice) ? YAHTZEE_VAL : 0;
+    case "ytz":   return isDice Poker(dice) ? YAHTZEE_VAL : 0;
     case "chance": return t;
   }
   return 0;
 }
-// Joker 简化规则：Yahtzee 行已记分后再掷出五同 → 本回合任意空行可记 50
-function jokerHand(dice, scores) { return isYahtzee(dice) && scores.ytz !== undefined; }
+// Joker 简化规则：Dice Poker 行已记分后再掷出五同 → 本回合任意空行可记 50
+function jokerHand(dice, scores) { return isDice Poker(dice) && scores.ytz !== undefined; }
 function effScore(cat, dice, scores) { return jokerHand(dice, scores) ? YAHTZEE_VAL : catScore(cat, dice); }
 
 function upperSum(scores) { var s = 0; for (var i = 0; i < 6; i++) s += scores[UPPER_CATS[i]] || 0; return s; }
